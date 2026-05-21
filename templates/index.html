@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>首页</title>
+
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+
+<!-- 左侧导航 -->
+<div class="sidebar">
+    <h2>🍎 饮食系统</h2>
+
+    <a href="/">首页</a>
+    <a href="/profile_page">个人信息</a>
+    <a href="/foods_page">食物管理</a>
+    <a href="/logs_page">饮食记录</a>
+    <a href="/logout">退出登录</a>
+</div>
+
+<!-- 主区域 -->
+<div class="main">
+
+    <!-- 顶部 -->
+    <div class="navbar">
+        <div>首页 Dashboard</div>
+
+        <div>
+            欢迎：
+            <span id="username"></span>
+        </div>
+    </div>
+
+    <!-- 内容 -->
+    <div class="container">
+
+        <div class="card">
+            <h2>📊 今日摄入统计</h2>
+
+            <p id="stats">加载中...</p>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+/* 检查登录 */
+fetch('/me')
+.then(res=>res.json())
+.then(data=>{
+
+    if(!data.logged_in){
+        location.href="/login_page"
+        return
+    }
+
+    username.innerText = data.username
+
+    loadStats()
+})
+
+/* 加载统计 */
+function loadStats(){
+
+    fetch('/today_stats')
+    .then(res=>res.json())
+    .then(data=>{
+
+        stats.innerText =
+        `热量：${data.calories} kcal
+        蛋白质：${data.protein} g
+        碳水：${data.carbs} g`
+    })
+}
+
+</script>
+
+</body>
+</html>

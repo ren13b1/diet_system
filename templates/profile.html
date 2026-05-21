@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>个人信息</title>
+
+<link rel="stylesheet" href="/static/css/style.css">
+
+<style>
+
+.profile-input{
+    width:100%;
+    padding:10px;
+    border:1px solid #ddd;
+    border-radius:8px;
+    margin-top:8px;
+    margin-bottom:15px;
+    font-size:15px;
+}
+
+.save-btn{
+    background:#00b894;
+    color:white;
+    border:none;
+    padding:12px 20px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:16px;
+}
+
+.save-btn:hover{
+    opacity:0.9;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<!-- 左侧导航 -->
+<div class="sidebar">
+
+    <h2>🍎 饮食系统</h2>
+
+    <a href="/">首页</a>
+    <a href="/profile_page">个人信息</a>
+    <a href="/foods_page">食物管理</a>
+    <a href="/logs_page">饮食记录</a>
+    <a href="/logout">退出登录</a>
+
+</div>
+
+<!-- 主区域 -->
+<div class="main">
+
+    <!-- 顶部 -->
+    <div class="navbar">
+
+        <div>👤 个人信息管理</div>
+
+        <div>
+            当前用户：
+            <span id="username"></span>
+        </div>
+
+    </div>
+
+    <!-- 内容 -->
+    <div class="container">
+
+        <div class="card">
+
+            <h2>健康档案</h2>
+
+            <!-- 年龄 -->
+            <p>年龄：</p>
+            <input
+                id="age"
+                type="number"
+                class="profile-input"
+            >
+
+            <!-- 性别 -->
+            <p>性别：</p>
+
+            <select
+                id="gender"
+                class="profile-input"
+            >
+                <option value="男">男</option>
+                <option value="女">女</option>
+            </select>
+
+            <!-- 身高 -->
+            <p>身高(cm)：</p>
+
+            <input
+                id="height"
+                type="number"
+                class="profile-input"
+            >
+
+            <!-- 体重 -->
+            <p>体重(kg)：</p>
+
+            <input
+                id="weight"
+                type="number"
+                class="profile-input"
+            >
+
+            <!-- 运动 -->
+            <p>每周运动次数：</p>
+
+            <input
+                id="weekly_exercise"
+                type="number"
+                class="profile-input"
+            >
+
+            <!-- 目标 -->
+            <p>目标：</p>
+
+            <select
+                id="goal"
+                class="profile-input"
+            >
+                <option value="减脂">减脂</option>
+                <option value="增肌">增肌</option>
+                <option value="保持健康">保持健康</option>
+            </select>
+
+            <!-- 每日热量 -->
+            <p>每日目标热量(kcal)：</p>
+
+            <input
+                id="target"
+                type="number"
+                class="profile-input"
+                placeholder="例如 2000"
+            >
+
+            <br>
+
+            <!-- 保存 -->
+            <button
+                class="save-btn"
+                onclick="saveProfile()"
+            >
+                保存信息
+            </button>
+            <hr style="margin:30px 0;">
+
+            <h2>🤖 AI 热量目标建议</h2>
+
+            <button class="save-btn" onclick="getAICalorieAdvise()">
+                获取AI热量建议
+            </button>
+
+            <div id="ai_result"
+                 style="
+                    margin-top:20px;
+                    background:#f8f9fa;
+                    padding:15px;
+                    border-radius:10px;
+                    line-height:1.8;
+                    white-space: pre-line;
+                 ">
+            </div>
+            <p id="msg"></p>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+/* 登录检测 */
+fetch('/me')
+
+.then(res => res.json())
+
+.then(data => {
+
+    if(!data.logged_in){
+
+        location.href = "/login_page"
+        return
+    }
+
+    document.getElementById("username").innerText =
+        data.username
+
+    loadProfile()
+})
+
+
+
+/* 加载个人信息 */
+function loadProfile(){
+
+    fetch('/profile')
+
+    .then(res => res.json())
+
+    .then(data => {
+
+        document.getElementById("age").value =
+            data.age || ""
+
+        document.getElementById("gender").value =
+            data.gender || "男"
+
+        document.getElementById("height").value =
+            data.height || ""
+
+        document.getElementById("weight").value =
+            data.weight || ""
+
+        document.getElementById("weekly_exercise").value =
+            data.weekly_exercise || ""
+
+        document.getElementById("goal").value =
+            data.goal || "保持健康"
+
+        document.getElementById("target").value =
+            data.target || 2000
+    })
+}
+
+
+
+/* 保存个人信息 */
+function saveProfile(){
+
+    fetch('/save_profile', {
+
+        method:'POST',
+
+        headers:{
+            'Content-Type':'application/json'
+        },
+
+        body:JSON.stringify({
+
+            age:
+            document.getElementById("age").value,
+
+            gender:
+            document.getElementById("gender").value,
+
+            height:
+            document.getElementById("height").value,
+
+            weight:
+            document.getElementById("weight").value,
+
+            weekly_exercise:
+            document.getElementById("weekly_exercise").value,
+
+            goal:
+            document.getElementById("goal").value,
+
+            target:
+            document.getElementById("target").value
+        })
+    })
+
+    .then(res => res.json())
+
+    .then(data => {
+
+        document.getElementById("msg").innerText =
+            data.msg
+    })
+}
+/* AI 热量建议 */
+
+function getAICalorieAdvise(){
+
+    document.getElementById("ai_result").innerHTML =
+        "AI正在计算中，请稍等..."
+
+    fetch('/ai_goal_advise')
+
+    .then(res => res.json())
+    .then(data => {
+
+        document.getElementById("ai_result").innerHTML =
+            data.result
+    })
+}
+</script>
+
+</body>
+</html>

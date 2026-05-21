@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>注册</title>
+
+<style>
+body {
+    background: linear-gradient(135deg,#ff9a9e,#fad0c4);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    font-family: Arial;
+}
+.card {
+    background:white;
+    padding:30px;
+    border-radius:12px;
+    width:300px;
+}
+input, button {
+    width:100%;
+    padding:10px;
+    margin:10px 0;
+}
+button {
+    background:#ff6b6b;
+    color:white;
+    border:none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+<h2>注册</h2>
+
+<input id="username" placeholder="用户名">
+<input id="password" type="password" placeholder="密码">
+
+<button onclick="register()">注册</button>
+<p id="msg"></p>
+
+<div onclick="location.href='/login_page'">已有账号？去登录</div>
+</div>
+
+<script>
+function register(){
+    fetch('/register',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+            username:username.value,
+            password:password.value
+        })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        msg.innerText = data.msg
+        if(data.msg==="注册成功"){
+            location.href="/login_page"
+        }
+    })
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>饮食记录</title>
+
+<link rel="stylesheet" href="/static/css/style.css">
+
+<style>
+
+/* 卡片 */
+.summary-card{
+    background:white;
+    padding:20px;
+    border-radius:12px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.05);
+    margin-bottom:20px;
+}
+
+/* 今日热量 */
+.summary-calories{
+    font-size:42px;
+    font-weight:bold;
+    color:#00b894;
+}
+
+/* 搜索框 */
+.search-box{
+    width:100%;
+    padding:12px;
+    border:1px solid #ddd;
+    border-radius:8px;
+    margin-top:15px;
+    margin-bottom:15px;
+    font-size:15px;
+}
+
+/* 列表 */
+#logList{
+    list-style:none;
+    padding:0;
+    margin:0;
+}
+
+.log-item{
+    background:white;
+    padding:18px;
+    border-radius:12px;
+    margin-bottom:15px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.05);
+}
+
+/* 按钮 */
+.btn-group{
+    margin-top:12px;
+    display:flex;
+    gap:10px;
+}
+
+.edit-btn{
+    background:#3498db;
+    color:white;
+    border:none;
+    padding:6px 12px;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+.delete-btn{
+    background:#e74c3c;
+    color:white;
+    border:none;
+    padding:6px 12px;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+.ai-box{
+    line-height:1.8;
+    color:#555;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<!-- 左侧 -->
+<div class="sidebar">
+
+    <h2>🍎 饮食系统</h2>
+
+    <a href="/">首页</a>
+    <a href="/profile_page">个人信息</a>
+    <a href="/foods_page">食物管理</a>
+    <a href="/logs_page">饮食记录</a>
+    <a href="/logout">退出登录</a>
+
+</div>
+
+<!-- 主体 -->
+<div class="main">
+
+    <!-- 顶部 -->
+    <div class="navbar">
+
+        <div>📋 饮食记录</div>
+
+        <div>
+            用户：<span id="username"></span>
+        </div>
+
+    </div>
+
+    <!-- 今日统计 -->
+    <div class="summary-card">
+
+        <h3>🔥 今日摄入</h3>
+
+        <div class="summary-calories" id="todayCalories">
+            0 kcal
+        </div>
+
+        <div style="margin-top:10px;">
+            距离目标还有
+            <span id="remain">--</span>
+            kcal
+        </div>
+
+        <!-- 进度条 -->
+        <div style="
+            width:100%;
+            height:12px;
+            background:#eee;
+            border-radius:20px;
+            margin-top:12px;
+        ">
+
+            <div id="progressBar"
+                 style="
+                    height:100%;
+                    width:0%;
+                    background:#00c389;
+                    border-radius:20px;
+                 ">
+            </div>
+
+        </div>
+
+        <div style="
+            display:flex;
+            justify-content:space-between;
+            margin-top:10px;
+        ">
+
+            <div id="todayCal">0 kcal</div>
+
+            <div id="targetText">
+                目标 -- kcal
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- AI建议 -->
+    <div class="summary-card">
+
+        <h3>🤖 AI 饮食建议</h3>
+
+        <div class="ai-box" id="aiAdvice">
+            正在分析今日饮食...
+        </div>
+
+    </div>
+
+    <!-- 饮食记录 -->
+    <div class="card">
+
+        <h2>我的饮食记录</h2>
+
+        <!-- 搜索 -->
+        <input
+            type="text"
+            id="searchInput"
+            class="search-box"
+            placeholder="搜索食物..."
+            oninput="loadLogs()"
+        >
+
+        <!-- 列表 -->
+        <ul id="logList"></ul>
+
+    </div>
+
+</div>
+
+<script>
+
+let target = 2000
+
+// ================= 登录初始化 =================
+fetch('/me')
+.then(res => res.json())
+.then(data => {
+
+    if(!data.logged_in){
+
+        location.href = "/login_page"
+        return
+    }
+
+    document.getElementById("username").innerText =
+        data.username
+
+    target = data.target || 2000
+
+    document.getElementById("targetText").innerText =
+        "目标 " + target + " kcal"
+
+    loadLogs()
+    loadAI()
+})
+
+
+// ================= 更新UI =================
+function updateUI(today){
+
+    document.getElementById("todayCalories").innerText =
+        today + " kcal"
+
+    document.getElementById("todayCal").innerText =
+        today + " kcal"
+
+    let remain = target - today
+
+    if(remain < 0){
+        remain = 0
+    }
+
+    document.getElementById("remain").innerText =
+        remain
+
+    let percent = (today / target) * 100
+
+    if(percent > 100){
+        percent = 100
+    }
+
+    document.getElementById("progressBar").style.width =
+        percent + "%"
+
+    // 超目标变红
+    if(today > target){
+
+        document.getElementById("progressBar").style.background =
+            "#e74c3c"
+    }
+    else{
+
+        document.getElementById("progressBar").style.background =
+            "#00c389"
+    }
+}
+
+
+// ================= 加载记录 =================
+function loadLogs(){
+
+    fetch('/logs')
+    .then(res => res.json())
+    .then(data => {
+
+        let list =
+            document.getElementById("logList")
+
+        list.innerHTML = ""
+
+        // 搜索关键词
+        let keyword =
+            document.getElementById("searchInput")
+            .value
+            .toLowerCase()
+
+        // 搜索过滤
+        data = data.filter(log =>
+            log.food_name.toLowerCase().includes(keyword)
+        )
+
+        let total = 0
+
+        // 今天日期
+        let todayStr =
+            new Date().toISOString().split('T')[0]
+
+        if(data.length === 0){
+
+            list.innerHTML = `
+                <div style="
+                    text-align:center;
+                    color:#999;
+                    padding:20px;
+                ">
+                    暂无记录
+                </div>
+            `
+
+            updateUI(0)
+            return
+        }
+
+        data.forEach(log => {
+
+            // 只统计今天
+            if(log.log_date.startsWith(todayStr)){
+
+                total += Number(log.calories)
+            }
+
+            let li = document.createElement("li")
+
+            li.className = "log-item"
+
+            li.innerHTML = `
+
+                <div>
+
+                    🍔 ${log.food_name}
+
+                    <span style="
+                        float:right;
+                        color:#00b894;
+                        font-weight:bold;
+                    ">
+                        ${log.calories} kcal
+                    </span>
+
+                </div>
+
+                <div style="
+                    color:#888;
+                    margin-top:8px;
+                ">
+                    🕒 ${log.log_date}
+                </div>
+
+                <div class="btn-group">
+
+                    <button
+                        class="edit-btn"
+                        onclick="editLog(
+                            ${log.id},
+                            '${log.food_name}',
+                            ${log.calories}
+                        )"
+                    >
+                        编辑
+                    </button>
+
+                    <button
+                        class="delete-btn"
+                        onclick="del(${log.id})"
+                    >
+                        删除
+                    </button>
+
+                </div>
+            `
+
+            list.appendChild(li)
+        })
+
+        updateUI(total)
+    })
+}
+
+
+// ================= 删除 =================
+function del(id){
+
+    if(!confirm("确定删除？")){
+        return
+    }
+
+    fetch('/delete_log', {
+
+        method:'POST',
+
+        headers:{
+            'Content-Type':'application/json'
+        },
+
+        body:JSON.stringify({id})
+
+    })
+    .then(r => r.json())
+    .then(() => {
+
+        loadLogs()
+        loadAI()
+    })
+}
+
+
+// ================= 编辑 =================
+function editLog(id, oldFood, oldCalories){
+
+    let food =
+        prompt("修改食物名称", oldFood)
+
+    if(food == null){
+        return
+    }
+
+    let calories =
+        prompt("修改热量", oldCalories)
+
+    if(calories == null){
+        return
+    }
+
+    fetch('/update_log', {
+
+        method:'POST',
+
+        headers:{
+            'Content-Type':'application/json'
+        },
+
+        body:JSON.stringify({
+
+            id:id,
+            food_name:food,
+            calories:calories
+
+        })
+
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        alert(data.message)
+
+        loadLogs()
+        loadAI()
+    })
+}
+
+
+// ================= AI建议 =================
+function loadAI(){
+
+    fetch('/ai_advice')
+    .then(res => res.json())
+    .then(data => {
+
+        document.getElementById("aiAdvice").innerText =
+            data.advice
+    })
+}
+
+</script>
+
+</body>
+</html>

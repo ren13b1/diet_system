@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>食物管理</title>
+
+<style>
+
+body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;
+    background:#f5f6f7;
+    display:flex;
+}
+
+/* 左侧栏 */
+.sidebar{
+    width:220px;
+    background:#111;
+    color:white;
+    height:100vh;
+    padding:20px;
+}
+
+.sidebar h2{
+    font-size:18px;
+    margin-bottom:20px;
+}
+
+.sidebar a{
+    display:block;
+    color:#aaa;
+    padding:10px;
+    text-decoration:none;
+    border-radius:8px;
+    margin-bottom:5px;
+}
+
+.sidebar a:hover{
+    background:#222;
+    color:white;
+}
+
+/* 主体 */
+.main{
+    flex:1;
+    padding:24px;
+}
+
+/* 顶栏 */
+.navbar{
+    display:flex;
+    justify-content:space-between;
+    margin-bottom:20px;
+    font-size:18px;
+    font-weight:600;
+}
+
+/* 布局 */
+.container{
+    display:grid;
+    grid-template-columns:2fr 1fr;
+    gap:20px;
+}
+
+/* 卡片 */
+.card{
+    background:white;
+    border-radius:16px;
+    padding:20px;
+    box-shadow:0 4px 18px rgba(0,0,0,0.06);
+}
+
+/* 搜索 */
+.search-box input{
+    width:100%;
+    padding:12px;
+    border-radius:12px;
+    border:1px solid #eee;
+}
+
+/* 食物项 */
+.food-item{
+    display:flex;
+    justify-content:space-between;
+    padding:14px;
+    margin-top:10px;
+    border-radius:12px;
+    background:#fff;
+}
+
+.food-info{
+    display:flex;
+    gap:12px;
+}
+
+.food-image{
+    width:50px;
+    height:50px;
+    border-radius:10px;
+}
+
+/* 按钮 */
+button{
+    background:#00c389;
+    color:white;
+    border:none;
+    padding:8px 14px;
+    border-radius:10px;
+    cursor:pointer;
+}
+
+/* 上传框 */
+.upload-box{
+    border:2px dashed #ddd;
+    padding:12px;
+    border-radius:12px;
+    text-align:center;
+    cursor:pointer;
+    margin-top:10px;
+}
+
+.upload-box:hover{
+    border-color:#00c389;
+}
+
+/* AI结果 */
+#aiResult{
+    margin-top:10px;
+    white-space:pre-wrap;
+    background:#f7f7f7;
+    padding:10px;
+    border-radius:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- 左侧 -->
+<div class="sidebar">
+    <h2>🍎 饮食系统</h2>
+    <a href="/">首页</a>
+    <a href="/profile_page">个人信息</a>
+    <a href="/foods_page">食物管理</a>
+    <a href="/logs_page">饮食记录</a>
+    <a href="/logout">退出登录</a>
+</div>
+
+<!-- 主体 -->
+<div class="main">
+
+    <div class="navbar">
+        <div>🍱 食物库</div>
+        <div>用户：<span id="username"></span></div>
+    </div>
+
+    <div class="container">
+
+        <!-- 左 -->
+        <div class="card">
+
+            <div class="search-box">
+                <input type="text" placeholder="搜索食物..." oninput="filterFoods(this.value)">
+            </div>
+
+            <div id="foodList"></div>
+
+        </div>
+
+        <!-- 右 -->
+        <div class="card">
+
+            <h3>新增食物</h3>
+
+            <input id="newFoodName" placeholder="食物名称">
+            <input id="newFoodCalories" placeholder="热量">
+
+            <input type="file" id="newFoodImage" accept="image/*" style="display:none" onchange="previewImage(event)">
+
+            <div class="upload-box" onclick="document.getElementById('newFoodImage').click()">
+                ➕ 上传图片
+            </div>
+
+            <img id="preview" style="width:100%;display:none;margin-top:10px;border-radius:10px;">
+
+            <button onclick="addFood()">添加</button>
+
+            <hr style="margin:20px 0">
+
+            <h3>📸 AI拍照记录</h3>
+
+            <input type="file" id="aiImage" accept="image/*" onchange="previewAI(event)">
+
+            <img id="aiPreview" style="width:100%;display:none;margin-top:10px;border-radius:10px;">
+
+            <button onclick="scanFood()">AI识别并记录</button>
+
+            <div id="aiResult"></div>
+
+        </div>
+
+    </div>
+</div>
+
+<script>
+
+let foodsData = [];
+
+/* 登录 */
+fetch('/me')
+.then(r=>r.json())
+.then(d=>{
+    if(!d.logged_in){
+        location.href="/login_page";
+        return;
+    }
+    document.getElementById("username").innerText = d.username;
+    loadFoods();
+});
+
+/* 食物列表 */
+function loadFoods(){
+    fetch('/foods')
+    .then(r=>r.json())
+    .then(data=>{
+        foodsData = data;
+        renderFoods(data);
+    });
+}
+
+function renderFoods(list){
+    let box = document.getElementById("foodList");
+    box.innerHTML = "";
+
+    if(list.length === 0){
+        box.innerHTML = "暂无食物";
+        return;
+    }
+
+    list.forEach(food=>{
+
+        let img = food.image_path
+            ? `<img class="food-image" src="${food.image_path}">`
+            : "";
+
+        let div = document.createElement("div");
+        div.className = "food-item";
+
+        div.innerHTML = `
+            <div class="food-info">
+                ${img}
+                <div>
+                    <div>${food.name}</div>
+                    <div>🔥 ${food.calories} kcal</div>
+                </div>
+            </div>
+
+            <button onclick="eatFood('${food.name}',${food.calories})">记录</button>
+        `;
+
+        box.appendChild(div);
+    });
+}
+
+/* 搜索 */
+function filterFoods(k){
+    renderFoods(
+        foodsData.filter(f=>f.name.toLowerCase().includes(k.toLowerCase()))
+    );
+}
+
+/* 添加食物 */
+function addFood(){
+
+    let form = new FormData();
+    form.append("name", document.getElementById("newFoodName").value);
+    form.append("calories", document.getElementById("newFoodCalories").value);
+
+    let file = document.getElementById("newFoodImage").files[0];
+    if(file) form.append("image", file);
+
+    fetch('/add_food',{
+        method:'POST',
+        body:form
+    })
+    .then(r=>r.json())
+    .then(d=>{
+        alert(d.msg);
+        loadFoods();
+    });
+}
+
+/* 记录 */
+function eatFood(name,cal){
+    fetch('/add_log',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({food_name:name, calories:cal})
+    })
+    .then(r=>r.json())
+    .then(d=>{
+        alert(d.msg);
+    });
+}
+
+/* 图片预览 */
+function previewImage(e){
+    let file = e.target.files[0];
+    let reader = new FileReader();
+
+    reader.onload = function(ev){
+        let img = document.getElementById("preview");
+        img.src = ev.target.result;
+        img.style.display = "block";
+    }
+    reader.readAsDataURL(file);
+}
+
+/* AI预览 */
+function previewAI(e){
+    let file = e.target.files[0];
+    let reader = new FileReader();
+
+    reader.onload = function(ev){
+        let img = document.getElementById("aiPreview");
+        img.src = ev.target.result;
+        img.style.display = "block";
+    }
+    reader.readAsDataURL(file);
+}
+
+/* AI识别 */
+function scanFood(){
+
+    let file = document.getElementById("aiImage").files[0];
+    if(!file){
+        alert("请上传图片");
+        return;
+    }
+
+    let form = new FormData();
+    form.append("image", file);
+
+    document.getElementById("aiResult").innerText = "AI识别中...";
+
+    fetch('/ai_food_scan',{
+        method:'POST',
+        body:form
+    })
+    .then(r=>r.json())
+    .then(data=>{
+
+        console.log(data);
+
+        if(data.data){
+            let d = data.data;
+
+            document.getElementById("aiResult").innerText =
+                `🍱 食物：${d.food_name}\n🔥 卡路里：${d.calories} kcal\n💡 建议：${d.advice}`;
+        }else{
+            document.getElementById("aiResult").innerText = data.msg || "识别失败";
+        }
+
+        loadFoods();
+    });
+}
+
+</script>
+
+</body>
+</html>
