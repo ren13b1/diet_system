@@ -237,7 +237,7 @@ def save_profile():
             weight=%s,
             weekly_exercise=%s,
             goal=%s,
-            target=%s
+            daily_calorie_target=%s
 
         WHERE id=%s
 
