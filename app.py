@@ -10,16 +10,29 @@ app = Flask(__name__)
 app.secret_key = '123456'
 
 # ================= 数据库连接函数 =================
+# def get_db():
+#     return pymysql.connect(
+#         host='localhost',
+#         user='root',
+#         password='root',
+#         database='diet_plandb',
+#         autocommit=True,
+#         cursorclass=pymysql.cursors.Cursor
+#     )
+from urllib.parse import urlparse
+
 def get_db():
+    url = urlparse(os.getenv("MYSQL_URL"))
+
     return pymysql.connect(
-        host='localhost',
-        user='root',
-        password='root',
-        database='diet_plandb',
+        host=url.hostname,
+        user=url.username,
+        password=url.password,
+        database=url.path[1:],
+        port=url.port,
         autocommit=True,
         cursorclass=pymysql.cursors.Cursor
     )
-
 
 # ================= 首页 =================
 @app.route('/')
@@ -788,7 +801,7 @@ def today_stats():
     cursor = db.cursor()
 
     cursor.execute("""
-        SELECT 
+        SELECT
             SUM(f.calories * l.quantity),
             SUM(f.protein * l.quantity),
             SUM(f.carbs * l.quantity)
@@ -894,3 +907,5 @@ def today_summary():
 # ================= 启动 =================
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+
+
