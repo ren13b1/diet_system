@@ -5,7 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, date
 from openai import OpenAI, base_url
 import os
-from google import genai
+
 app = Flask(__name__)
 app.secret_key = '123456'
 
